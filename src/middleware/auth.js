@@ -64,6 +64,10 @@ export const roleMiddleware = (...allowedRoles) => {
       });
     }
 
+    if (req.user.role === 'admin') {
+      return next();
+    }
+
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ 
         error: 'Access denied', 
@@ -74,6 +78,8 @@ export const roleMiddleware = (...allowedRoles) => {
     next();
   };
 };
+
+export const adminOnly = () => roleMiddleware('admin');
 
 export const clientOnly = () => roleMiddleware('client');
 
