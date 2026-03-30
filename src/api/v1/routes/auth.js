@@ -1,10 +1,11 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const User = require('../../../models/User');
-const Garage = require('../../../models/Garage');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import User from '../../../models/User.js';
+import Garage from '../../../models/Garage.js';
+import { authMiddleware } from '../../../middleware/auth.js';
+
 const router = express.Router();
 
-// Generate JWT Token
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE
@@ -12,19 +13,15 @@ const generateToken = (userId) => {
 };
 
 // @route   POST /api/v1/auth/register
-// @desc    Register user (client or garage)
-// @access  Public
 router.post('/register', async (req, res) => {
   try {
     const { phone, password, fullName, role, email, businessDetails } = req.body;
 
-    // Check if user exists
     const existingUser = await User.findOne({ phone });
     if (existingUser) {
       return res.status(400).json({ error: 'User with this phone already exists' });
     }
 
-    // Create user
     const user = await User.create({
       phone,
       password,
@@ -33,7 +30,6 @@ router.post('/register', async (req, res) => {
       email: email || undefined
     });
 
-    // If role is garage, create garage profile
     let garage = null;
     if (role === 'garage') {
       if (!businessDetails) {
@@ -76,8 +72,6 @@ router.post('/register', async (req, res) => {
 });
 
 // @route   POST /api/v1/auth/login
-// @desc    Login user
-// @access  Public
 router.post('/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -126,9 +120,7 @@ router.post('/login', async (req, res) => {
 });
 
 // @route   GET /api/v1/auth/me
-// @desc    Get current user
-// @access  Private
-router.get('/me', require('../../../middleware/auth').authMiddleware, async (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
     let garage = null;
     if (req.user.role === 'garage') {
@@ -162,4 +154,4 @@ router.get('/me', require('../../../middleware/auth').authMiddleware, async (req
   }
 });
 
-module.exports = router;
+export default router;

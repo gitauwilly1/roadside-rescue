@@ -2,6 +2,8 @@
   "name": "roadside-rescue",
   "private": true,
   "version": "0.0.0",
+  "description": "",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",

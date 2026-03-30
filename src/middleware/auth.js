@@ -1,7 +1,7 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
-const authMiddleware = async (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
@@ -24,7 +24,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-const roleMiddleware = (...roles) => {
+export const roleMiddleware = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Access denied' });
@@ -32,5 +32,3 @@ const roleMiddleware = (...roles) => {
     next();
   };
 };
-
-module.exports = { authMiddleware, roleMiddleware };

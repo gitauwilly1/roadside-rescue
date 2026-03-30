@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const JobSchema = new mongoose.Schema({
   clientId: {
@@ -44,14 +44,8 @@ const JobSchema = new mongoose.Schema({
     coordinates: [Number]
   },
   destinationAddress: String,
-  fixedPrice: {
-    type: Number,
-    min: 0
-  },
-  customBidAmount: {
-    type: Number,
-    min: 0
-  },
+  fixedPrice: Number,
+  customBidAmount: Number,
   notes: {
     type: String,
     maxlength: 500
@@ -66,10 +60,10 @@ const JobSchema = new mongoose.Schema({
   }
 });
 
-// Index for location queries
 JobSchema.index({ clientLocation: '2dsphere' });
 JobSchema.index({ status: 1, createdAt: -1 });
 JobSchema.index({ clientId: 1, createdAt: -1 });
 JobSchema.index({ garageId: 1, createdAt: -1 });
 
-module.exports = mongoose.model('Job', JobSchema);
+const Job = mongoose.model('Job', JobSchema);
+export default Job;

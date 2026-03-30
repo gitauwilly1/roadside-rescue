@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const ServiceSchema = new mongoose.Schema({
   serviceType: {
@@ -48,9 +48,8 @@ const GarageSchema = new mongoose.Schema({
       default: 'Point'
     },
     coordinates: {
-      type: [Number], // [longitude, latitude]
-      required: true,
-      index: '2dsphere'
+      type: [Number],
+      required: true
     }
   },
   isVerified: {
@@ -94,13 +93,12 @@ const GarageSchema = new mongoose.Schema({
   }
 });
 
-// Update updatedAt on save
 GarageSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });
 
-// Create 2dsphere index for location queries
 GarageSchema.index({ location: '2dsphere' });
 
-module.exports = mongoose.model('Garage', GarageSchema);
+const Garage = mongoose.model('Garage', GarageSchema);
+export default Garage;
