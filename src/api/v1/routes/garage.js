@@ -5,16 +5,20 @@ import Job from '../../../models/Job.js';
 
 const router = express.Router();
 
-// Apply auth and garage-only middleware to all routes
 router.use(authMiddleware);
 router.use(garageOnly());
 
+// Helper to get current garage profile
+const getCurrentGarage = async (userId) => {
+  return await Garage.findOne({ userId });
+};
+
 // @route   GET /api/v1/garage/profile
-// @desc    Get garage profile
+// @desc    Get own garage profile
 // @access  Private (Garage only)
 router.get('/profile', async (req, res) => {
   try {
-    const garage = await Garage.findOne({ userId: req.user._id });
+    const garage = await getCurrentGarage(req.user._id);
     
     if (!garage) {
       return res.status(404).json({ error: 'Garage profile not found' });
@@ -47,23 +51,25 @@ router.get('/profile', async (req, res) => {
 });
 
 // @route   PUT /api/v1/garage/profile
-// @desc    Update garage profile
+// @desc    Update own garage profile
 // @access  Private (Garage only)
 router.put('/profile', async (req, res) => {
   try {
-    const { businessName, businessPhone, address, location, services } = req.body;
+    const { businessName, businessPhone, address, location, services, fleetCount } = req.body;
     
-    const garage = await Garage.findOne({ userId: req.user._id });
+    const garage = await getCurrentGarage(req.user._id);
     
     if (!garage) {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
 
+    // Update allowed fields
     if (businessName) garage.businessName = businessName;
     if (businessPhone) garage.businessPhone = businessPhone;
     if (address) garage.address = address;
     if (location) garage.location = location;
     if (services) garage.services = services;
+    if (fleetCount !== undefined) garage.fleetCount = fleetCount;
 
     await garage.save();
 
@@ -76,7 +82,8 @@ router.put('/profile', async (req, res) => {
         businessPhone: garage.businessPhone,
         address: garage.address,
         location: garage.location,
-        services: garage.services
+        services: garage.services,
+        fleetCount: garage.fleetCount
       }
     });
   } catch (error) {
@@ -86,7 +93,7 @@ router.put('/profile', async (req, res) => {
 });
 
 // @route   PATCH /api/v1/garage/online-status
-// @desc    Toggle garage online/offline status
+// @desc    Toggle own garage online/offline status
 // @access  Private (Garage only)
 router.patch('/online-status', async (req, res) => {
   try {
@@ -96,7 +103,7 @@ router.patch('/online-status', async (req, res) => {
       return res.status(400).json({ error: 'isOnline must be a boolean' });
     }
 
-    const garage = await Garage.findOne({ userId: req.user._id });
+    const garage = await getCurrentGarage(req.user._id);
     
     if (!garage) {
       return res.status(404).json({ error: 'Garage profile not found' });
@@ -117,13 +124,13 @@ router.patch('/online-status', async (req, res) => {
 });
 
 // @route   GET /api/v1/garage/jobs
-// @desc    Get all jobs for this garage
+// @desc    Get jobs assigned to own garage only
 // @access  Private (Garage only)
 router.get('/jobs', async (req, res) => {
   try {
     const { status, limit = 50, page = 1 } = req.query;
     
-    const garage = await Garage.findOne({ userId: req.user._id });
+    const garage = await getCurrentGarage(req.user._id);
     
     if (!garage) {
       return res.status(404).json({ error: 'Garage profile not found' });
@@ -158,8 +165,38 @@ router.get('/jobs', async (req, res) => {
   }
 });
 
+// @route   GET /api/v1/garage/jobs/:jobId
+// @desc    Get specific job assigned to own garage
+// @access  Private (Garage only)
+router.get('/jobs/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    const job = await Job.findOne({ _id: jobId, garageId: garage._id })
+      .populate('clientId', 'fullName phone email');
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found or not assigned to your garage' });
+    }
+
+    res.json({
+      success: true,
+      job
+    });
+  } catch (error) {
+    console.error('Get job details error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // @route   PATCH /api/v1/garage/jobs/:jobId/status
-// @desc    Update job status (accept, en_route, in_progress, complete)
+// @desc    Update job status for own garage only
 // @access  Private (Garage only)
 router.patch('/jobs/:jobId/status', async (req, res) => {
   try {
@@ -174,7 +211,7 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
       });
     }
 
-    const garage = await Garage.findOne({ userId: req.user._id });
+    const garage = await getCurrentGarage(req.user._id);
     if (!garage) {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
@@ -182,12 +219,12 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
     const job = await Job.findOne({ _id: jobId, garageId: garage._id });
     
     if (!job) {
-      return res.status(404).json({ error: 'Job not found or not assigned to you' });
+      return res.status(404).json({ error: 'Job not found or not assigned to your garage' });
     }
 
     job.status = status;
     
-    if (status === 'accepted') job.acceptedAt = new Date();
+    if (status === 'accepted' && !job.acceptedAt) job.acceptedAt = new Date();
     if (status === 'completed') job.completedAt = new Date();
     if (status === 'cancelled') job.cancelledAt = new Date();
 
@@ -200,6 +237,205 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
     });
   } catch (error) {
     console.error('Update job status error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   PUT /api/v1/garage/services
+// @desc    Update own garage services (CRUD on services)
+// @access  Private (Garage only)
+router.put('/services', async (req, res) => {
+  try {
+    const { services } = req.body;
+    
+    if (!services || !Array.isArray(services)) {
+      return res.status(400).json({ error: 'Services array is required' });
+    }
+
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    // Validate each service
+    const validServiceTypes = ['tire_change', 'jump_start', 'fuel_delivery', 'towing_5km'];
+    for (const service of services) {
+      if (!validServiceTypes.includes(service.serviceType)) {
+        return res.status(400).json({ 
+          error: `Invalid service type: ${service.serviceType}`,
+          validTypes: validServiceTypes
+        });
+      }
+      if (typeof service.fixedPrice !== 'number' || service.fixedPrice < 0) {
+        return res.status(400).json({ 
+          error: `Invalid price for service: ${service.serviceType}` 
+        });
+      }
+    }
+
+    garage.services = services;
+    await garage.save();
+
+    res.json({
+      success: true,
+      message: 'Services updated successfully',
+      services: garage.services
+    });
+  } catch (error) {
+    console.error('Update services error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   POST /api/v1/garage/services
+// @desc    Add a new service to own garage
+// @access  Private (Garage only)
+router.post('/services', async (req, res) => {
+  try {
+    const { serviceType, fixedPrice, isActive } = req.body;
+    
+    const validServiceTypes = ['tire_change', 'jump_start', 'fuel_delivery', 'towing_5km'];
+    if (!validServiceTypes.includes(serviceType)) {
+      return res.status(400).json({ 
+        error: `Invalid service type. Must be one of: ${validServiceTypes.join(', ')}` 
+      });
+    }
+
+    if (typeof fixedPrice !== 'number' || fixedPrice < 0) {
+      return res.status(400).json({ error: 'Valid fixed price is required' });
+    }
+
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    // Check if service already exists
+    const existingService = garage.services.find(s => s.serviceType === serviceType);
+    if (existingService) {
+      return res.status(400).json({ 
+        error: 'Service already exists. Use PUT to update instead.' 
+      });
+    }
+
+    garage.services.push({
+      serviceType,
+      fixedPrice,
+      isActive: isActive !== undefined ? isActive : true
+    });
+    
+    await garage.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Service added successfully',
+      services: garage.services
+    });
+  } catch (error) {
+    console.error('Add service error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/v1/garage/services/:serviceType
+// @desc    Remove a service from own garage
+// @access  Private (Garage only)
+router.delete('/services/:serviceType', async (req, res) => {
+  try {
+    const { serviceType } = req.params;
+    
+    const validServiceTypes = ['tire_change', 'jump_start', 'fuel_delivery', 'towing_5km'];
+    if (!validServiceTypes.includes(serviceType)) {
+      return res.status(400).json({ 
+        error: `Invalid service type. Must be one of: ${validServiceTypes.join(', ')}` 
+      });
+    }
+
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    const serviceExists = garage.services.find(s => s.serviceType === serviceType);
+    if (!serviceExists) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    garage.services = garage.services.filter(s => s.serviceType !== serviceType);
+    await garage.save();
+
+    res.json({
+      success: true,
+      message: 'Service removed successfully',
+      services: garage.services
+    });
+  } catch (error) {
+    console.error('Remove service error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   POST /api/v1/garage/photos
+// @desc    Add photos to own garage
+// @access  Private (Garage only)
+router.post('/photos', async (req, res) => {
+  try {
+    const { photos } = req.body;
+    
+    if (!photos || !Array.isArray(photos)) {
+      return res.status(400).json({ error: 'Photos array is required' });
+    }
+
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    garage.photos = [...garage.photos, ...photos];
+    await garage.save();
+
+    res.json({
+      success: true,
+      message: 'Photos added successfully',
+      photos: garage.photos
+    });
+  } catch (error) {
+    console.error('Add photos error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/v1/garage/photos
+// @desc    Remove photos from own garage
+// @access  Private (Garage only)
+router.delete('/photos', async (req, res) => {
+  try {
+    const { photoUrls } = req.body;
+    
+    if (!photoUrls || !Array.isArray(photoUrls)) {
+      return res.status(400).json({ error: 'Photo URLs array is required' });
+    }
+
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    garage.photos = garage.photos.filter(photo => !photoUrls.includes(photo));
+    await garage.save();
+
+    res.json({
+      success: true,
+      message: 'Photos removed successfully',
+      photos: garage.photos
+    });
+  } catch (error) {
+    console.error('Remove photos error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
