@@ -13,14 +13,31 @@ const generateToken = (userId) => {
   });
 };
 
+// Helper to find user by email or phone
+const findUserByIdentifier = async (identifier) => {
+  const isEmail = identifier.includes('@');
+  
+  if (isEmail) {
+    return await User.findOne({ email: identifier.toLowerCase() });
+  } else {
+    // Assume it's a phone number
+    return await User.findOne({ phone: identifier });
+  }
+};
+
 // @route   POST /api/v1/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { phone, password, fullName, role, email, businessDetails } = req.body;
+    const { phone, email, password, fullName, role, businessDetails } = req.body;
 
-    const existingUser = await User.findOne({ phone });
-    if (existingUser) {
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
       return res.status(400).json({ error: 'User with this phone already exists' });
+    }
+
+    const existingEmail = await User.findOne({ email: email.toLowerCase() });
+    if (existingEmail) {
+      return res.status(400).json({ error: 'User with this email already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -28,10 +45,10 @@ router.post('/register', async (req, res) => {
 
     const user = await User.create({
       phone,
+      email: email.toLowerCase(),
       password: hashedPassword,
       fullName,
-      role,
-      email: email || undefined
+      role
     });
 
     let garage = null;
@@ -59,6 +76,7 @@ router.post('/register', async (req, res) => {
       user: {
         id: user._id,
         phone: user.phone,
+        email: user.email,
         fullName: user.fullName,
         role: user.role
       },
@@ -76,15 +94,19 @@ router.post('/register', async (req, res) => {
 });
 
 // @route   POST /api/v1/auth/login
+// @desc    Login with email OR phone
 router.post('/login', async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Phone and password required' });
+    if (!identifier || !password) {
+      return res.status(400).json({ 
+        error: 'Identifier (email or phone) and password are required' 
+      });
     }
 
-    const user = await User.findOne({ phone });
+    const user = await findUserByIdentifier(identifier);
+    
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -107,6 +129,7 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         phone: user.phone,
+        email: user.email,
         fullName: user.fullName,
         role: user.role
       },
