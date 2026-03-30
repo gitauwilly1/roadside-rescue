@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import User from '../../../models/User.js';
 import Garage from '../../../models/Garage.js';
 import { authMiddleware } from '../../../middleware/auth.js';
@@ -22,9 +23,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'User with this phone already exists' });
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     const user = await User.create({
       phone,
-      password,
+      password: hashedPassword,
       fullName,
       role,
       email: email || undefined
@@ -85,7 +89,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
