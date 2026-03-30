@@ -5,6 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import authRoutes from './api/v1/routes/auth.js';
+import garageRoutes from './api/v1/routes/garage.js';
+import clientRoutes from './api/v1/routes/client.js';
 
 dotenv.config();
 
@@ -25,6 +27,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/garage', garageRoutes);
+app.use('/api/v1/client', clientRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
