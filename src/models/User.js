@@ -9,7 +9,8 @@ const UserSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    sparse: true,
+    required: [true, 'Email is required'],
+    unique: true,
     trim: true,
     lowercase: true
   },
@@ -20,7 +21,7 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['client', 'garage', 'admin'],
+    enum: ['client', 'garage'],
     required: true
   },
   fullName: {
