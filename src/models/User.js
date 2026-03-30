@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 const UserSchema = new mongoose.Schema({
   phone: {
@@ -41,28 +40,6 @@ const UserSchema = new mongoose.Schema({
     default: Date.now
   }
 });
-
-UserSchema.pre('save', function(next) {
-  const user = this;
-  
-  if (!user.isModified('password')) {
-    return next();
-  }
-  
-  bcrypt.genSalt(10, (err, salt) => {
-    if (err) return next(err);
-    
-    bcrypt.hash(user.password, salt, (err, hash) => {
-      if (err) return next(err);
-      user.password = hash;
-      next();
-    });
-  });
-});
-
-UserSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
 
 const User = mongoose.model('User', UserSchema);
 export default User;
