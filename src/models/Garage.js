@@ -93,11 +93,6 @@ const GarageSchema = new mongoose.Schema({
   }
 });
 
-GarageSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
 GarageSchema.index({ location: '2dsphere' });
 
 const Garage = mongoose.model('Garage', GarageSchema);
