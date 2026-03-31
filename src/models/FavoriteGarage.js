@@ -22,6 +22,7 @@ const FavoriteGarageSchema = new mongoose.Schema({
 });
 
 FavoriteGarageSchema.index({ clientId: 1, garageId: 1 }, { unique: true });
+FavoriteGarageSchema.index({ garageId: 1, createdAt: -1 });
 
 const FavoriteGarage = mongoose.model('FavoriteGarage', FavoriteGarageSchema);
 export default FavoriteGarage;
