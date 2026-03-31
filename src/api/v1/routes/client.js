@@ -18,7 +18,6 @@ router.use(clientOnly());
 
 // @route   GET /api/v1/client/profile
 // @desc    Get client profile
-// @access  Private (Client only)
 router.get('/profile', async (req, res) => {
   try {
     const client = req.user;
@@ -42,7 +41,6 @@ router.get('/profile', async (req, res) => {
 
 // @route   PUT /api/v1/client/profile
 // @desc    Update client profile
-// @access  Private (Client only)
 router.put('/profile', async (req, res) => {
   try {
     const { fullName, phone, email } = req.body;
@@ -83,11 +81,9 @@ router.put('/profile', async (req, res) => {
   }
 });
 
-// ==================== VEHICLE MANAGEMENT ====================
 
 // @route   GET /api/v1/client/vehicles
 // @desc    Get all client vehicles
-// @access  Private (Client only)
 router.get('/vehicles', async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ clientId: req.user._id, isActive: true })
@@ -105,7 +101,6 @@ router.get('/vehicles', async (req, res) => {
 
 // @route   POST /api/v1/client/vehicles
 // @desc    Add a new vehicle
-// @access  Private (Client only)
 router.post('/vehicles', async (req, res) => {
   try {
     const { licensePlate, make, model, year, color, isDefault } = req.body;
@@ -121,6 +116,13 @@ router.post('/vehicles', async (req, res) => {
     
     if (existingVehicle) {
       return res.status(400).json({ error: 'Vehicle with this license plate already exists' });
+    }
+    
+    if (isDefault) {
+      await Vehicle.updateMany(
+        { clientId: req.user._id, isDefault: true },
+        { isDefault: false }
+      );
     }
     
     const vehicle = await Vehicle.create({
@@ -146,7 +148,6 @@ router.post('/vehicles', async (req, res) => {
 
 // @route   PUT /api/v1/client/vehicles/:vehicleId
 // @desc    Update a vehicle
-// @access  Private (Client only)
 router.put('/vehicles/:vehicleId', async (req, res) => {
   try {
     const { vehicleId } = req.params;
@@ -163,7 +164,19 @@ router.put('/vehicles/:vehicleId', async (req, res) => {
     if (model) vehicle.model = model;
     if (year) vehicle.year = year;
     if (color) vehicle.color = color;
-    if (isDefault !== undefined) vehicle.isDefault = isDefault;
+    
+    if (isDefault !== undefined) {
+      if (isDefault) {
+        await Vehicle.updateMany(
+          { clientId: req.user._id, _id: { $ne: vehicleId }, isDefault: true },
+          { isDefault: false }
+        );
+        vehicle.isDefault = true;
+      } else {
+        vehicle.isDefault = false;
+      }
+    }
+    
     if (isActive !== undefined) vehicle.isActive = isActive;
     
     await vehicle.save();
@@ -181,7 +194,6 @@ router.put('/vehicles/:vehicleId', async (req, res) => {
 
 // @route   DELETE /api/v1/client/vehicles/:vehicleId
 // @desc    Delete a vehicle (soft delete)
-// @access  Private (Client only)
 router.delete('/vehicles/:vehicleId', async (req, res) => {
   try {
     const { vehicleId } = req.params;
@@ -208,7 +220,6 @@ router.delete('/vehicles/:vehicleId', async (req, res) => {
 
 // @route   GET /api/v1/client/locations
 // @desc    Get all saved locations
-// @access  Private (Client only)
 router.get('/locations', async (req, res) => {
   try {
     const locations = await SavedLocation.find({ clientId: req.user._id })
@@ -226,13 +237,19 @@ router.get('/locations', async (req, res) => {
 
 // @route   POST /api/v1/client/locations
 // @desc    Add a saved location
-// @access  Private (Client only)
 router.post('/locations', async (req, res) => {
   try {
     const { name, customName, address, location, isDefault } = req.body;
     
     if (!name || !address || !location || !location.coordinates) {
       return res.status(400).json({ error: 'Name, address, and coordinates are required' });
+    }
+    
+    if (isDefault) {
+      await SavedLocation.updateMany(
+        { clientId: req.user._id, isDefault: true },
+        { isDefault: false }
+      );
     }
     
     const savedLocation = await SavedLocation.create({
@@ -260,7 +277,6 @@ router.post('/locations', async (req, res) => {
 
 // @route   PUT /api/v1/client/locations/:locationId
 // @desc    Update a saved location
-// @access  Private (Client only)
 router.put('/locations/:locationId', async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -281,7 +297,18 @@ router.put('/locations/:locationId', async (req, res) => {
         coordinates: location.coordinates
       };
     }
-    if (isDefault !== undefined) savedLocation.isDefault = isDefault;
+    
+    if (isDefault !== undefined) {
+      if (isDefault) {
+        await SavedLocation.updateMany(
+          { clientId: req.user._id, _id: { $ne: locationId }, isDefault: true },
+          { isDefault: false }
+        );
+        savedLocation.isDefault = true;
+      } else {
+        savedLocation.isDefault = false;
+      }
+    }
     
     await savedLocation.save();
     
@@ -298,7 +325,6 @@ router.put('/locations/:locationId', async (req, res) => {
 
 // @route   DELETE /api/v1/client/locations/:locationId
 // @desc    Delete a saved location
-// @access  Private (Client only)
 router.delete('/locations/:locationId', async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -325,7 +351,6 @@ router.delete('/locations/:locationId', async (req, res) => {
 
 // @route   GET /api/v1/client/favorites
 // @desc    Get all favorite garages
-// @access  Private (Client only)
 router.get('/favorites', async (req, res) => {
   try {
     const favorites = await FavoriteGarage.find({ clientId: req.user._id })
@@ -344,7 +369,6 @@ router.get('/favorites', async (req, res) => {
 
 // @route   POST /api/v1/client/favorites
 // @desc    Add a garage to favorites
-// @access  Private (Client only)
 router.post('/favorites', async (req, res) => {
   try {
     const { garageId, notes } = req.body;
@@ -386,7 +410,6 @@ router.post('/favorites', async (req, res) => {
 
 // @route   DELETE /api/v1/client/favorites/:garageId
 // @desc    Remove a garage from favorites
-// @access  Private (Client only)
 router.delete('/favorites/:garageId', async (req, res) => {
   try {
     const { garageId } = req.params;
@@ -413,7 +436,6 @@ router.delete('/favorites/:garageId', async (req, res) => {
 
 // @route   GET /api/v1/client/notifications/preferences
 // @desc    Get notification preferences
-// @access  Private (Client only)
 router.get('/notifications/preferences', async (req, res) => {
   try {
     let preferences = await NotificationPreference.findOne({ userId: req.user._id });
@@ -434,7 +456,6 @@ router.get('/notifications/preferences', async (req, res) => {
 
 // @route   PUT /api/v1/client/notifications/preferences
 // @desc    Update notification preferences
-// @access  Private (Client only)
 router.put('/notifications/preferences', async (req, res) => {
   try {
     const { emailNotifications, smsNotifications, pushNotifications, jobAssigned, jobStatusUpdate, promotionalOffers } = req.body;
@@ -468,7 +489,6 @@ router.put('/notifications/preferences', async (req, res) => {
 
 // @route   GET /api/v1/client/jobs/drafts
 // @desc    Get draft jobs (not yet submitted)
-// @access  Private (Client only)
 router.get('/jobs/drafts', async (req, res) => {
   try {
     const drafts = await Job.find({ 
@@ -488,7 +508,6 @@ router.get('/jobs/drafts', async (req, res) => {
 
 // @route   POST /api/v1/client/jobs/draft
 // @desc    Save a job as draft
-// @access  Private (Client only)
 router.post('/jobs/draft', async (req, res) => {
   try {
     const { serviceType, clientLocation, clientAddress, destinationLocation, destinationAddress, notes, vehicleId } = req.body;
@@ -518,7 +537,6 @@ router.post('/jobs/draft', async (req, res) => {
 
 // @route   DELETE /api/v1/client/jobs/drafts/:draftId
 // @desc    Delete a draft job
-// @access  Private (Client only)
 router.delete('/jobs/drafts/:draftId', async (req, res) => {
   try {
     const { draftId } = req.params;
@@ -543,6 +561,19 @@ router.delete('/jobs/drafts/:draftId', async (req, res) => {
   }
 });
 
+
+// Helper function for distance calculation
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
 
 // @route   GET /api/v1/client/garages/nearby
 // @desc    Get nearby garages based on location
@@ -601,18 +632,6 @@ router.get('/garages/nearby', async (req, res) => {
   }
 });
 
-// Helper function for distance calculation
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-};
 
 // @route   POST /api/v1/client/jobs
 // @desc    Create a new job request
