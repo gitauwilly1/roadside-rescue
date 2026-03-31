@@ -4,6 +4,10 @@ import User from '../../../models/User.js';
 import Garage from '../../../models/Garage.js';
 import Job from '../../../models/Job.js';
 import Review from '../../../models/Review.js';
+import Vehicle from '../../../models/Vehicle.js';
+import SavedLocation from '../../../models/SavedLocation.js';
+import FavoriteGarage from '../../../models/FavoriteGarage.js';
+import NotificationPreference from '../../../models/NotificationPreference.js';
 
 const router = express.Router();
 
@@ -11,7 +15,6 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(adminOnly());
 
-// ==================== USER MANAGEMENT ====================
 
 // @route   GET /api/v1/admin/users
 // @desc    Get all users with pagination and filters
@@ -142,7 +145,6 @@ router.delete('/users/:userId', async (req, res) => {
   }
 });
 
-// ==================== GARAGE MANAGEMENT ====================
 
 // @route   GET /api/v1/admin/garages
 // @desc    Get all garages with details
@@ -240,7 +242,6 @@ router.patch('/garages/:garageId/verify', async (req, res) => {
   }
 });
 
-// ==================== JOB MANAGEMENT ====================
 
 // @route   GET /api/v1/admin/jobs
 // @desc    Get all jobs with filters
@@ -327,6 +328,103 @@ router.get('/stats', async (req, res) => {
     });
   } catch (error) {
     console.error('Get stats error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// @route   GET /api/v1/admin/vehicles
+// @desc    Get all vehicles across all clients
+// @access  Private (Admin only)
+router.get('/vehicles', async (req, res) => {
+  try {
+    const { limit = 50, page = 1 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const vehicles = await Vehicle.find()
+      .populate('clientId', 'fullName phone email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Vehicle.countDocuments();
+    
+    res.json({
+      success: true,
+      vehicles,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Get vehicles error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/v1/admin/vehicles/:vehicleId
+// @desc    Delete a vehicle (admin override)
+// @access  Private (Admin only)
+router.delete('/vehicles/:vehicleId', async (req, res) => {
+  try {
+    const { vehicleId } = req.params;
+    
+    const vehicle = await Vehicle.findByIdAndDelete(vehicleId);
+    
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Vehicle deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete vehicle error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// @route   GET /api/v1/admin/favorites
+// @desc    Get all favorites across all clients
+// @access  Private (Admin only)
+router.get('/favorites', async (req, res) => {
+  try {
+    const favorites = await FavoriteGarage.find()
+      .populate('clientId', 'fullName phone email')
+      .populate('garageId', 'businessName businessPhone')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      favorites
+    });
+  } catch (error) {
+    console.error('Get favorites error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// @route   GET /api/v1/admin/notifications/preferences
+// @desc    Get all notification preferences
+// @access  Private (Admin only)
+router.get('/notifications/preferences', async (req, res) => {
+  try {
+    const preferences = await NotificationPreference.find()
+      .populate('userId', 'fullName phone email role')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      preferences
+    });
+  } catch (error) {
+    console.error('Get preferences error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
