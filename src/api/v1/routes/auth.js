@@ -20,29 +20,69 @@ const findUserByIdentifier = async (identifier) => {
   if (isEmail) {
     return await User.findOne({ email: identifier.toLowerCase() });
   } else {
-    // Assume it's a phone number
     return await User.findOne({ phone: identifier });
   }
 };
 
+// Helper validation functions
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const isValidPhone = (phone) => {
+  const phoneRegex = /^[0-9]{10}$/;
+  return phoneRegex.test(phone);
+};
+
+const isValidPassword = (password) => {
+  return password && password.length >= 6;
+};
+
 // @route   POST /api/v1/auth/register
+// @desc    Register user (client, garage, or admin)
 router.post('/register', async (req, res) => {
   try {
     const { phone, email, password, fullName, role, businessDetails } = req.body;
 
+    // Validation
+    if (!phone || !email || !password || !fullName || !role) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({ error: 'Invalid phone number format. Use 10 digits.' });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    if (!isValidPassword(password)) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (!['client', 'garage', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be client, garage, or admin' });
+    }
+
+    // Check if phone already exists
     const existingPhone = await User.findOne({ phone });
     if (existingPhone) {
       return res.status(400).json({ error: 'User with this phone already exists' });
     }
 
+    // Check if email already exists
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
 
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create user
     const user = await User.create({
       phone,
       email: email.toLowerCase(),
@@ -111,6 +151,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Account has been deactivated. Please contact support.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -147,6 +192,7 @@ router.post('/login', async (req, res) => {
 });
 
 // @route   GET /api/v1/auth/me
+// @desc    Get current authenticated user
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     let garage = null;
@@ -160,19 +206,23 @@ router.get('/me', authMiddleware, async (req, res) => {
         phone: req.user.phone,
         email: req.user.email,
         fullName: req.user.fullName,
-        role: req.user.role
+        role: req.user.role,
+        isActive: req.user.isActive,
+        createdAt: req.user.createdAt
       },
       garage: garage ? {
         id: garage._id,
         businessName: garage.businessName,
         businessPhone: garage.businessPhone,
+        licenseNumber: garage.licenseNumber,
         address: garage.address,
         location: garage.location,
         isVerified: garage.isVerified,
         isOnline: garage.isOnline,
         services: garage.services,
         rating: garage.rating,
-        totalReviews: garage.totalReviews
+        totalReviews: garage.totalReviews,
+        fleetCount: garage.fleetCount
       } : null
     });
   } catch (error) {
