@@ -11,7 +11,6 @@ import NotificationPreference from '../../../models/NotificationPreference.js';
 
 const router = express.Router();
 
-// Apply auth and client-only middleware to all routes
 router.use(authMiddleware);
 router.use(clientOnly());
 
@@ -510,20 +509,22 @@ router.get('/jobs/drafts', async (req, res) => {
 // @desc    Save a job as draft
 router.post('/jobs/draft', async (req, res) => {
   try {
-    const { serviceType, clientLocation, clientAddress, destinationLocation, destinationAddress, notes, vehicleId } = req.body;
-    
+    const { serviceType, clientAddress, destinationAddress, notes, vehicleId } = req.body;
+
+    if (!serviceType) {
+      return res.status(400).json({ error: 'Service type is required' });
+    }
+
     const draft = await Job.create({
       clientId: req.user._id,
       serviceType,
-      clientLocation: clientLocation ? { type: 'Point', coordinates: clientLocation.coordinates } : undefined,
-      clientAddress,
-      destinationLocation: destinationLocation ? { type: 'Point', coordinates: destinationLocation.coordinates } : undefined,
-      destinationAddress,
-      notes,
-      vehicleId,
+      clientAddress: clientAddress || null,
+      destinationAddress: destinationAddress || null,
+      notes: notes || null,
+      vehicleId: vehicleId || null,
       status: 'draft'
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Draft saved successfully',
@@ -632,6 +633,7 @@ router.get('/garages/nearby', async (req, res) => {
   }
 });
 
+// ==================== JOB MANAGEMENT ====================
 
 // @route   POST /api/v1/client/jobs
 // @desc    Create a new job request
