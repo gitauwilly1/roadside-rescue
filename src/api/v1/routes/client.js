@@ -486,83 +486,6 @@ router.put('/notifications/preferences', async (req, res) => {
 });
 
 
-// @route   GET /api/v1/client/jobs/drafts
-// @desc    Get draft jobs (not yet submitted)
-router.get('/jobs/drafts', async (req, res) => {
-  try {
-    const drafts = await Job.find({ 
-      clientId: req.user._id, 
-      status: 'draft' 
-    }).sort({ createdAt: -1 });
-    
-    res.json({
-      success: true,
-      drafts
-    });
-  } catch (error) {
-    console.error('Get drafts error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// @route   POST /api/v1/client/jobs/draft
-// @desc    Save a job as draft
-router.post('/jobs/draft', async (req, res) => {
-  try {
-    const { serviceType, clientAddress, destinationAddress, notes, vehicleId } = req.body;
-
-    if (!serviceType) {
-      return res.status(400).json({ error: 'Service type is required' });
-    }
-
-    const draft = await Job.create({
-      clientId: req.user._id,
-      serviceType,
-      clientAddress: clientAddress || null,
-      destinationAddress: destinationAddress || null,
-      notes: notes || null,
-      vehicleId: vehicleId || null,
-      status: 'draft'
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Draft saved successfully',
-      draft
-    });
-  } catch (error) {
-    console.error('Save draft error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// @route   DELETE /api/v1/client/jobs/drafts/:draftId
-// @desc    Delete a draft job
-router.delete('/jobs/drafts/:draftId', async (req, res) => {
-  try {
-    const { draftId } = req.params;
-    
-    const draft = await Job.findOneAndDelete({ 
-      _id: draftId, 
-      clientId: req.user._id,
-      status: 'draft'
-    });
-    
-    if (!draft) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Draft deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete draft error:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-
 // Helper function for distance calculation
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
@@ -633,7 +556,6 @@ router.get('/garages/nearby', async (req, res) => {
   }
 });
 
-// ==================== JOB MANAGEMENT ====================
 
 // @route   POST /api/v1/client/jobs
 // @desc    Create a new job request
@@ -692,7 +614,7 @@ router.get('/jobs', async (req, res) => {
   try {
     const { status, limit = 50, page = 1 } = req.query;
     
-    const query = { clientId: req.user._id, status: { $ne: 'draft' } };
+    const query = { clientId: req.user._id };
     if (status) query.status = status;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
