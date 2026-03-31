@@ -42,7 +42,7 @@ const NotificationPreferenceSchema = new mongoose.Schema({
 });
 
 NotificationPreferenceSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
+  this.updatedAt = new Date();
   next();
 });
 
