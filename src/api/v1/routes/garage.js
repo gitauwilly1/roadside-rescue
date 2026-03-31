@@ -5,6 +5,7 @@ import Job from '../../../models/Job.js';
 
 const router = express.Router();
 
+// Apply auth and garage-only middleware to all routes
 router.use(authMiddleware);
 router.use(garageOnly());
 
@@ -13,9 +14,9 @@ const getCurrentGarage = async (userId) => {
   return await Garage.findOne({ userId });
 };
 
+
 // @route   GET /api/v1/garage/profile
 // @desc    Get own garage profile
-// @access  Private (Garage only)
 router.get('/profile', async (req, res) => {
   try {
     const garage = await getCurrentGarage(req.user._id);
@@ -52,7 +53,6 @@ router.get('/profile', async (req, res) => {
 
 // @route   PUT /api/v1/garage/profile
 // @desc    Update own garage profile
-// @access  Private (Garage only)
 router.put('/profile', async (req, res) => {
   try {
     const { businessName, businessPhone, address, location, services, fleetCount } = req.body;
@@ -63,7 +63,6 @@ router.put('/profile', async (req, res) => {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
 
-    // Update allowed fields
     if (businessName) garage.businessName = businessName;
     if (businessPhone) garage.businessPhone = businessPhone;
     if (address) garage.address = address;
@@ -94,7 +93,6 @@ router.put('/profile', async (req, res) => {
 
 // @route   PATCH /api/v1/garage/online-status
 // @desc    Toggle own garage online/offline status
-// @access  Private (Garage only)
 router.patch('/online-status', async (req, res) => {
   try {
     const { isOnline } = req.body;
@@ -123,9 +121,9 @@ router.patch('/online-status', async (req, res) => {
   }
 });
 
+
 // @route   GET /api/v1/garage/jobs
 // @desc    Get jobs assigned to own garage only
-// @access  Private (Garage only)
 router.get('/jobs', async (req, res) => {
   try {
     const { status, limit = 50, page = 1 } = req.query;
@@ -167,7 +165,6 @@ router.get('/jobs', async (req, res) => {
 
 // @route   GET /api/v1/garage/jobs/:jobId
 // @desc    Get specific job assigned to own garage
-// @access  Private (Garage only)
 router.get('/jobs/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -197,7 +194,6 @@ router.get('/jobs/:jobId', async (req, res) => {
 
 // @route   PATCH /api/v1/garage/jobs/:jobId/status
 // @desc    Update job status for own garage only
-// @access  Private (Garage only)
 router.patch('/jobs/:jobId/status', async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -241,9 +237,9 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
   }
 });
 
+
 // @route   PUT /api/v1/garage/services
-// @desc    Update own garage services (CRUD on services)
-// @access  Private (Garage only)
+// @desc    Update all services for own garage
 router.put('/services', async (req, res) => {
   try {
     const { services } = req.body;
@@ -258,7 +254,6 @@ router.put('/services', async (req, res) => {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
 
-    // Validate each service
     const validServiceTypes = ['tire_change', 'jump_start', 'fuel_delivery', 'towing_5km'];
     for (const service of services) {
       if (!validServiceTypes.includes(service.serviceType)) {
@@ -290,7 +285,6 @@ router.put('/services', async (req, res) => {
 
 // @route   POST /api/v1/garage/services
 // @desc    Add a new service to own garage
-// @access  Private (Garage only)
 router.post('/services', async (req, res) => {
   try {
     const { serviceType, fixedPrice, isActive } = req.body;
@@ -312,7 +306,6 @@ router.post('/services', async (req, res) => {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
 
-    // Check if service already exists
     const existingService = garage.services.find(s => s.serviceType === serviceType);
     if (existingService) {
       return res.status(400).json({ 
@@ -341,7 +334,6 @@ router.post('/services', async (req, res) => {
 
 // @route   DELETE /api/v1/garage/services/:serviceType
 // @desc    Remove a service from own garage
-// @access  Private (Garage only)
 router.delete('/services/:serviceType', async (req, res) => {
   try {
     const { serviceType } = req.params;
@@ -378,9 +370,9 @@ router.delete('/services/:serviceType', async (req, res) => {
   }
 });
 
+
 // @route   POST /api/v1/garage/photos
 // @desc    Add photos to own garage
-// @access  Private (Garage only)
 router.post('/photos', async (req, res) => {
   try {
     const { photos } = req.body;
@@ -411,7 +403,6 @@ router.post('/photos', async (req, res) => {
 
 // @route   DELETE /api/v1/garage/photos
 // @desc    Remove photos from own garage
-// @access  Private (Garage only)
 router.delete('/photos', async (req, res) => {
   try {
     const { photoUrls } = req.body;
