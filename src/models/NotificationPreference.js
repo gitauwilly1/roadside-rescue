@@ -5,7 +5,7 @@ const NotificationPreferenceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true
+    unique: true 
   },
   emailNotifications: {
     type: Boolean,
@@ -41,7 +41,6 @@ const NotificationPreferenceSchema = new mongoose.Schema({
   }
 });
 
-NotificationPreferenceSchema.index({ userId: 1 }, { unique: true });
 
 const NotificationPreference = mongoose.model('NotificationPreference', NotificationPreferenceSchema);
 export default NotificationPreference;
