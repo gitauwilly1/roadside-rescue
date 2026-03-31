@@ -45,18 +45,8 @@ const VehicleSchema = new mongoose.Schema({
   }
 });
 
-// Ensure one default vehicle per client
-VehicleSchema.pre('save', async function(next) {
-  if (this.isDefault) {
-    await this.constructor.updateMany(
-      { clientId: this.clientId, _id: { $ne: this._id } },
-      { isDefault: false }
-    );
-  }
-  next();
-});
-
 VehicleSchema.index({ clientId: 1, licensePlate: 1 }, { unique: true });
+VehicleSchema.index({ clientId: 1, isDefault: 1 });
 
 const Vehicle = mongoose.model('Vehicle', VehicleSchema);
 export default Vehicle;
