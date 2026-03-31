@@ -23,26 +23,23 @@ const JobSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'pending', 'accepted', 'en_route', 'in_progress', 'completed', 'cancelled'],
+    enum: ['pending', 'accepted', 'en_route', 'in_progress', 'completed', 'cancelled'],
     default: 'pending'
   },
   clientLocation: {
     type: {
       type: String,
-      enum: ['Point']
+      enum: ['Point'],
+      required: true
     },
     coordinates: {
       type: [Number],
-      required: function() {
-        return this.status !== 'draft' && this.status !== undefined;
-      }
+      required: true
     }
   },
   clientAddress: {
     type: String,
-    required: function() {
-      return this.status !== 'draft' && this.status !== undefined;
-    }
+    required: true
   },
   destinationLocation: {
     type: {
@@ -66,10 +63,6 @@ const JobSchema = new mongoose.Schema({
     type: String,
     maxlength: 500
   },
-  draftData: {
-    type: mongoose.Schema.Types.Mixed,
-    default: null
-  },
   acceptedAt: {
     type: Date
   },
@@ -89,6 +82,7 @@ const JobSchema = new mongoose.Schema({
   }
 });
 
+JobSchema.index({ clientLocation: '2dsphere' });
 JobSchema.index({ status: 1, createdAt: -1 });
 JobSchema.index({ clientId: 1, createdAt: -1 });
 JobSchema.index({ garageId: 1, createdAt: -1 });
