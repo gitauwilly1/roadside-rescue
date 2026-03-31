@@ -29,20 +29,19 @@ const JobSchema = new mongoose.Schema({
   clientLocation: {
     type: {
       type: String,
-      enum: ['Point'],
-      default: 'Point'
+      enum: ['Point']
     },
     coordinates: {
       type: [Number],
       required: function() {
-        return this.status !== 'draft';
+        return this.status !== 'draft' && this.status !== undefined;
       }
     }
   },
   clientAddress: {
     type: String,
     required: function() {
-      return this.status !== 'draft';
+      return this.status !== 'draft' && this.status !== undefined;
     }
   },
   destinationLocation: {
@@ -90,33 +89,27 @@ const JobSchema = new mongoose.Schema({
   }
 });
 
-// Indexes for performance
-JobSchema.index({ clientLocation: '2dsphere' });
 JobSchema.index({ status: 1, createdAt: -1 });
 JobSchema.index({ clientId: 1, createdAt: -1 });
 JobSchema.index({ garageId: 1, createdAt: -1 });
 JobSchema.index({ status: 1, garageId: 1 });
 JobSchema.index({ clientId: 1, status: 1 });
 
-// Virtual for job duration
 JobSchema.virtual('duration').get(function() {
   if (this.acceptedAt && this.completedAt) {
-    return (this.completedAt - this.acceptedAt) / 1000 / 60; // minutes
+    return (this.completedAt - this.acceptedAt) / 1000 / 60;
   }
   return null;
 });
 
-// Method to check if job can be cancelled
 JobSchema.methods.canBeCancelled = function() {
   return ['pending', 'accepted', 'en_route'].includes(this.status);
 };
 
-// Method to check if job can be reviewed
 JobSchema.methods.canBeReviewed = function() {
   return this.status === 'completed';
 };
 
-// Method to get job summary
 JobSchema.methods.getSummary = function() {
   return {
     id: this._id,
