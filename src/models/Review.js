@@ -34,7 +34,6 @@ const ReviewSchema = new mongoose.Schema({
 });
 
 ReviewSchema.index({ garageId: 1, rating: -1 });
-ReviewSchema.index({ jobId: 1 }, { unique: true });
 
 const Review = mongoose.model('Review', ReviewSchema);
 export default Review;
