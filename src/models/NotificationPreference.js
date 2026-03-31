@@ -41,10 +41,7 @@ const NotificationPreferenceSchema = new mongoose.Schema({
   }
 });
 
-NotificationPreferenceSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
+NotificationPreferenceSchema.index({ userId: 1 }, { unique: true });
 
 const NotificationPreference = mongoose.model('NotificationPreference', NotificationPreferenceSchema);
 export default NotificationPreference;
