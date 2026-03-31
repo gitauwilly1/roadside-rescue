@@ -5,7 +5,6 @@ import Job from '../../../models/Job.js';
 
 const router = express.Router();
 
-// Apply auth and garage-only middleware to all routes
 router.use(authMiddleware);
 router.use(garageOnly());
 
@@ -163,6 +162,51 @@ router.get('/jobs', async (req, res) => {
   }
 });
 
+// @route   GET /api/v1/garage/jobs/available
+// @desc    Get available pending jobs that can be accepted
+router.get('/jobs/available', async (req, res) => {
+  try {
+    const { serviceType, limit = 20, page = 1 } = req.query;
+    
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    const query = { 
+      status: 'pending',
+      garageId: null
+    };
+    
+    if (serviceType) query.serviceType = serviceType;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const jobs = await Job.find(query)
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('clientId', 'fullName phone');
+
+    const total = await Job.countDocuments(query);
+
+    res.json({
+      success: true,
+      jobs,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Get available jobs error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // @route   GET /api/v1/garage/jobs/:jobId
 // @desc    Get specific job assigned to own garage
 router.get('/jobs/:jobId', async (req, res) => {
@@ -193,7 +237,7 @@ router.get('/jobs/:jobId', async (req, res) => {
 });
 
 // @route   PATCH /api/v1/garage/jobs/:jobId/status
-// @desc    Update job status for own garage only
+// @desc    Accept and update job status for own garage
 router.patch('/jobs/:jobId/status', async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -212,17 +256,43 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
 
-    const job = await Job.findOne({ _id: jobId, garageId: garage._id });
-    
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found or not assigned to your garage' });
+    // For accepting a job, find pending job not assigned to any garage
+    let job;
+    if (status === 'accepted') {
+      job = await Job.findOne({ 
+        _id: jobId, 
+        status: 'pending',
+        garageId: null 
+      });
+      
+      if (!job) {
+        return res.status(404).json({ 
+          error: 'Job not found, already assigned, or not pending' 
+        });
+      }
+      
+      // Assign garage to job
+      job.garageId = garage._id;
+      job.status = status;
+      job.acceptedAt = new Date();
+    } else {
+      // For subsequent status updates, find job already assigned to this garage
+      job = await Job.findOne({ 
+        _id: jobId, 
+        garageId: garage._id 
+      });
+      
+      if (!job) {
+        return res.status(404).json({ 
+          error: 'Job not found or not assigned to your garage' 
+        });
+      }
+      
+      job.status = status;
+      
+      if (status === 'completed') job.completedAt = new Date();
+      if (status === 'cancelled') job.cancelledAt = new Date();
     }
-
-    job.status = status;
-    
-    if (status === 'accepted' && !job.acceptedAt) job.acceptedAt = new Date();
-    if (status === 'completed') job.completedAt = new Date();
-    if (status === 'cancelled') job.cancelledAt = new Date();
 
     await job.save();
 
