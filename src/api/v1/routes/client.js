@@ -16,7 +16,6 @@ router.use(clientOnly());
 
 
 // @route   GET /api/v1/client/profile
-// @desc    Get client profile
 router.get('/profile', async (req, res) => {
   try {
     const client = req.user;
@@ -39,7 +38,6 @@ router.get('/profile', async (req, res) => {
 });
 
 // @route   PUT /api/v1/client/profile
-// @desc    Update client profile
 router.put('/profile', async (req, res) => {
   try {
     const { fullName, phone, email } = req.body;
@@ -82,7 +80,6 @@ router.put('/profile', async (req, res) => {
 
 
 // @route   GET /api/v1/client/vehicles
-// @desc    Get all client vehicles
 router.get('/vehicles', async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ clientId: req.user._id, isActive: true })
@@ -99,7 +96,6 @@ router.get('/vehicles', async (req, res) => {
 });
 
 // @route   POST /api/v1/client/vehicles
-// @desc    Add a new vehicle
 router.post('/vehicles', async (req, res) => {
   try {
     const { licensePlate, make, model, year, color, isDefault } = req.body;
@@ -146,7 +142,6 @@ router.post('/vehicles', async (req, res) => {
 });
 
 // @route   PUT /api/v1/client/vehicles/:vehicleId
-// @desc    Update a vehicle
 router.put('/vehicles/:vehicleId', async (req, res) => {
   try {
     const { vehicleId } = req.params;
@@ -192,7 +187,6 @@ router.put('/vehicles/:vehicleId', async (req, res) => {
 });
 
 // @route   DELETE /api/v1/client/vehicles/:vehicleId
-// @desc    Delete a vehicle (soft delete)
 router.delete('/vehicles/:vehicleId', async (req, res) => {
   try {
     const { vehicleId } = req.params;
@@ -218,7 +212,6 @@ router.delete('/vehicles/:vehicleId', async (req, res) => {
 
 
 // @route   GET /api/v1/client/locations
-// @desc    Get all saved locations
 router.get('/locations', async (req, res) => {
   try {
     const locations = await SavedLocation.find({ clientId: req.user._id })
@@ -235,7 +228,6 @@ router.get('/locations', async (req, res) => {
 });
 
 // @route   POST /api/v1/client/locations
-// @desc    Add a saved location
 router.post('/locations', async (req, res) => {
   try {
     const { name, customName, address, location, isDefault } = req.body;
@@ -275,7 +267,6 @@ router.post('/locations', async (req, res) => {
 });
 
 // @route   PUT /api/v1/client/locations/:locationId
-// @desc    Update a saved location
 router.put('/locations/:locationId', async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -323,7 +314,6 @@ router.put('/locations/:locationId', async (req, res) => {
 });
 
 // @route   DELETE /api/v1/client/locations/:locationId
-// @desc    Delete a saved location
 router.delete('/locations/:locationId', async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -349,7 +339,6 @@ router.delete('/locations/:locationId', async (req, res) => {
 
 
 // @route   GET /api/v1/client/favorites
-// @desc    Get all favorite garages
 router.get('/favorites', async (req, res) => {
   try {
     const favorites = await FavoriteGarage.find({ clientId: req.user._id })
@@ -367,7 +356,6 @@ router.get('/favorites', async (req, res) => {
 });
 
 // @route   POST /api/v1/client/favorites
-// @desc    Add a garage to favorites
 router.post('/favorites', async (req, res) => {
   try {
     const { garageId, notes } = req.body;
@@ -408,7 +396,6 @@ router.post('/favorites', async (req, res) => {
 });
 
 // @route   DELETE /api/v1/client/favorites/:garageId
-// @desc    Remove a garage from favorites
 router.delete('/favorites/:garageId', async (req, res) => {
   try {
     const { garageId } = req.params;
@@ -434,13 +421,15 @@ router.delete('/favorites/:garageId', async (req, res) => {
 
 
 // @route   GET /api/v1/client/notifications/preferences
-// @desc    Get notification preferences
 router.get('/notifications/preferences', async (req, res) => {
   try {
     let preferences = await NotificationPreference.findOne({ userId: req.user._id });
     
     if (!preferences) {
-      preferences = await NotificationPreference.create({ userId: req.user._id });
+      preferences = await NotificationPreference.create({ 
+        userId: req.user._id,
+        updatedAt: new Date()
+      });
     }
     
     res.json({
@@ -454,7 +443,6 @@ router.get('/notifications/preferences', async (req, res) => {
 });
 
 // @route   PUT /api/v1/client/notifications/preferences
-// @desc    Update notification preferences
 router.put('/notifications/preferences', async (req, res) => {
   try {
     const { emailNotifications, smsNotifications, pushNotifications, jobAssigned, jobStatusUpdate, promotionalOffers } = req.body;
@@ -472,6 +460,8 @@ router.put('/notifications/preferences', async (req, res) => {
     if (jobStatusUpdate !== undefined) preferences.jobStatusUpdate = jobStatusUpdate;
     if (promotionalOffers !== undefined) preferences.promotionalOffers = promotionalOffers;
     
+    preferences.updatedAt = new Date();
+    
     await preferences.save();
     
     res.json({
@@ -486,7 +476,6 @@ router.put('/notifications/preferences', async (req, res) => {
 });
 
 
-// Helper function for distance calculation
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -500,7 +489,6 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 // @route   GET /api/v1/client/garages/nearby
-// @desc    Get nearby garages based on location
 router.get('/garages/nearby', async (req, res) => {
   try {
     const { lat, lng, radius = 10, serviceType } = req.query;
@@ -558,7 +546,6 @@ router.get('/garages/nearby', async (req, res) => {
 
 
 // @route   POST /api/v1/client/jobs
-// @desc    Create a new job request
 router.post('/jobs', async (req, res) => {
   try {
     const { 
@@ -609,7 +596,6 @@ router.post('/jobs', async (req, res) => {
 });
 
 // @route   GET /api/v1/client/jobs
-// @desc    Get client's job history
 router.get('/jobs', async (req, res) => {
   try {
     const { status, limit = 50, page = 1 } = req.query;
@@ -644,7 +630,6 @@ router.get('/jobs', async (req, res) => {
 });
 
 // @route   GET /api/v1/client/jobs/:jobId
-// @desc    Get specific job details
 router.get('/jobs/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -667,7 +652,6 @@ router.get('/jobs/:jobId', async (req, res) => {
 });
 
 // @route   POST /api/v1/client/jobs/:jobId/review
-// @desc    Add review for completed job
 router.post('/jobs/:jobId/review', async (req, res) => {
   try {
     const { jobId } = req.params;
