@@ -611,11 +611,22 @@ router.get('/jobs', async (req, res) => {
       .limit(parseInt(limit))
       .populate('garageId', 'businessName businessPhone rating');
 
+      // Add review status to each job
+    const jobsWithReviewStatus = await Promise.all(
+      jobs.map(async (job) => {
+        const review = await Review.findOne({ jobId: job._id });
+        return {
+          ...job.toObject(),
+          hasReview: !!review
+        };
+      })
+    );
+
     const total = await Job.countDocuments(query);
 
     res.json({
       success: true,
-      jobs,
+      jobs: jobsWithReviewStatus,
       pagination: {
         total,
         page: parseInt(page),
