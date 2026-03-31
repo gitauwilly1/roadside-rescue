@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware, clientOnly } from '../../../middleware/auth.js';
+import User from '../../../models/User.js';
 import Garage from '../../../models/Garage.js';
 import Job from '../../../models/Job.js';
 import Review from '../../../models/Review.js';
