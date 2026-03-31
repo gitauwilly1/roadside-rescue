@@ -256,9 +256,10 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
       return res.status(404).json({ error: 'Garage profile not found' });
     }
 
-    // For accepting a job, find pending job not assigned to any garage
     let job;
+
     if (status === 'accepted') {
+      // For accepting a job, find pending job not assigned to any garage
       job = await Job.findOne({ 
         _id: jobId, 
         status: 'pending',
@@ -295,6 +296,11 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
     }
 
     await job.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('job_status_update', job);
+    }
 
     res.json({
       success: true,
