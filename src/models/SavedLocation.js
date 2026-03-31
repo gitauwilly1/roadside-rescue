@@ -43,6 +43,7 @@ const SavedLocationSchema = new mongoose.Schema({
 
 SavedLocationSchema.index({ clientId: 1, name: 1 });
 SavedLocationSchema.index({ location: '2dsphere' });
+SavedLocationSchema.index({ clientId: 1, isDefault: 1 });
 
 const SavedLocation = mongoose.model('SavedLocation', SavedLocationSchema);
 export default SavedLocation;
