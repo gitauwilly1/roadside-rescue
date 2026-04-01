@@ -8,9 +8,10 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "vite build",
+    "build": "echo 'No build step required'",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "echo 'Dependencies installed'"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
