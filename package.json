@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "npm install --omit=dev && vite build",
+    "build": "npm install --omit=dev",
     "lint": "eslint .",
     "preview": "vite preview",
     "postinstall": "echo 'Dependencies installed'"
