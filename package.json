@@ -1,41 +1,25 @@
 {
-  "name": "roadside-rescue",
-  "private": true,
-  "version": "0.0.0",
-  "description": "",
-  "main": "src/server.js",
+  "name": "roadside-rescue-backend",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Backend API for Roadside Rescue",
+  "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "npm install --omit=dev",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "postinstall": "echo 'Dependencies installed'"
+    "build": "npm install --omit=dev"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "geohash": "^0.0.1",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.3.3",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "socket.io": "^4.8.3"
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.0",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^8.0.0",
+    "socket.io": "^4.6.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "nodemon": "^3.1.14",
-    "vite": "^8.0.1"
+    "nodemon": "^3.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

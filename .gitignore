@@ -25,3 +25,17 @@ dist-ssr
 .env
 .env.local
 .env.production
+
+vite.config.js
+index.html
+public/
+src/App.jsx
+src/main.jsx
+src/index.css
+src/pages/
+*.css
+*.jsx
+
+# Vite
+dist/
+.vite/
