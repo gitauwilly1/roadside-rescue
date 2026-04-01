@@ -429,4 +429,94 @@ router.get('/notifications/preferences', async (req, res) => {
   }
 });
 
+// @route   DELETE /api/v1/admin/jobs/:jobId
+// @desc    Soft delete a job (admin only)
+// @access  Private (Admin only)
+router.delete('/jobs/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Soft delete - mark as deleted and add reason
+    job.status = 'cancelled';
+    job.cancelledAt = new Date();
+    job.cancellationReason = 'Deleted by admin: ' + (req.body.reason || 'Violation of terms');
+    await job.save();
+
+    res.json({
+      success: true,
+      message: 'Job deleted successfully',
+      job: {
+        id: job._id,
+        status: job.status,
+        cancellationReason: job.cancellationReason
+      }
+    });
+  } catch (error) {
+    console.error('Delete job error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/v1/admin/reviews/:reviewId
+// @desc    Delete a review (admin only)
+// @access  Private (Admin only)
+router.delete('/reviews/:reviewId', async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+
+    const review = await Review.findByIdAndDelete(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Update garage rating after review deletion
+    const garage = await Garage.findById(review.garageId);
+    if (garage) {
+      const allReviews = await Review.find({ garageId: review.garageId });
+      const averageRating = allReviews.length > 0 
+        ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+        : 0;
+      
+      garage.rating = Math.round(averageRating * 10) / 10;
+      garage.totalReviews = allReviews.length;
+      await garage.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete review error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/v1/admin/vehicles/:vehicleId
+// @desc    Permanently delete a vehicle (admin only)
+// @access  Private (Admin only)
+router.delete('/vehicles/:vehicleId', async (req, res) => {
+  try {
+    const { vehicleId } = req.params;
+
+    const vehicle = await Vehicle.findByIdAndDelete(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Vehicle permanently deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete vehicle error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 export default router;
