@@ -7,13 +7,6 @@ import { authMiddleware } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/test', (req, res) => {
-  res.json({ 
-    message: 'Auth routes are working!', 
-    timestamp: new Date().toISOString(),
-    routes: ['/register', '/login', '/me', '/test']
-  });
-});
 
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
