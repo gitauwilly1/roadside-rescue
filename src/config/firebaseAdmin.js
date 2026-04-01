@@ -3,21 +3,37 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Check if Firebase Admin is already initialized
+// Initialize Firebase Admin SDK
 if (!admin.apps.length) {
-  // For production, you'll need to download service account JSON from Firebase Console
-  // For development, we can use environment variables
   try {
-    // If you have a service account JSON file, use:
-    // admin.initializeApp({
-    //   credential: admin.credential.cert(serviceAccount),
-    // });
-    
-    // For now, we'll use a placeholder - you'll need to add actual credentials
-    console.log('⚠️ Firebase Admin not configured. Google auth will not work.');
-    console.log('📌 To enable Google auth, add Firebase service account credentials');
+    // Check if we have service account credentials in environment
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      // If credentials are stored as a JSON string in environment variable
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      console.log(' Firebase Admin initialized with service account');
+    } 
+    // Alternative: Use individual environment variables
+    else if (process.env.FIREBASE_PROJECT_ID && 
+             process.env.FIREBASE_PRIVATE_KEY && 
+             process.env.FIREBASE_CLIENT_EMAIL) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        }),
+      });
+      console.log(' Firebase Admin initialized with env variables');
+    }
+    else {
+      console.log(' Firebase Admin not configured. Google auth will not work.');
+      console.log(' Add FIREBASE_SERVICE_ACCOUNT JSON to Railway environment variables');
+    }
   } catch (error) {
-    console.error('Firebase Admin initialization error:', error);
+    console.error(' Firebase Admin initialization error:', error);
   }
 }
 
@@ -27,9 +43,10 @@ export const verifyFirebaseToken = async (idToken) => {
       throw new Error('Firebase Admin not initialized');
     }
     const decodedToken = await admin.auth().verifyIdToken(idToken);
+    console.log(' Firebase token verified for:', decodedToken.email);
     return decodedToken;
   } catch (error) {
-    console.error('Firebase token verification error:', error);
+    console.error(' Firebase token verification error:', error);
     return null;
   }
 };
