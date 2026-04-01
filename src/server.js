@@ -23,7 +23,7 @@ const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
 if (missingEnvVars.length > 0) {
-  console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
+  console.error(' Missing required environment variables:', missingEnvVars.join(', '));
   process.exit(1);
 }
 
@@ -232,16 +232,36 @@ io.on('connection', (socket) => {
   });
 });
 
+// ==================== CORS CONFIGURATION ====================
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://roadside-rescue-client-1.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5000'
+].filter(Boolean);
+
+console.log('CORS allowed origins:', allowedOrigins);
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.set('io', io);
-
 
 app.get('/', (req, res) => {
   res.json({
@@ -267,10 +287,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/test-auth', (req, res) => {
+  res.json({ message: 'Server is working, auth routes should be at /api/v1/auth' });
+});
+
+console.log(' Registering API routes...');
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/garage', garageRoutes);
 app.use('/api/v1/client', clientRoutes);
 app.use('/api/v1/admin', adminRoutes);
+console.log(' API routes registered');
 
 app.use((req, res) => {
   console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
@@ -289,7 +315,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-
 const startServer = async () => {
   try {
     await connectDB();
@@ -303,7 +328,7 @@ const startServer = async () => {
       console.log(` API base: http://localhost:${PORT}/api/v1`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
+    console.error(' Failed to start server:', error.message);
     process.exit(1);
   }
 };
