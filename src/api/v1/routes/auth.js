@@ -232,4 +232,106 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// @route   POST /api/v1/auth/google
+// @desc    Authenticate with Google Firebase token
+// @access  Public
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken, fullName, phone, role, businessDetails } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ error: 'Google ID token is required' });
+    }
+
+    const decodedToken = await verifyFirebaseToken(idToken);
+    
+    if (!decodedToken) {
+      return res.status(401).json({ error: 'Invalid Google token' });
+    }
+
+    const googleEmail = decodedToken.email;
+    const googleName = fullName || decodedToken.name || googleEmail.split('@')[0];
+
+    let user = await User.findOne({ email: googleEmail.toLowerCase() });
+
+    if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+      user = await User.create({
+        phone: phone || '',
+        email: googleEmail.toLowerCase(),
+        password: hashedPassword,
+        fullName: googleName,
+        role: role || 'client',
+        isActive: true
+      });
+
+      let garage = null;
+      if (role === 'garage' && businessDetails) {
+        garage = await Garage.create({
+          userId: user._id,
+          businessName: businessDetails.businessName,
+          licenseNumber: businessDetails.licenseNumber,
+          businessPhone: businessDetails.businessPhone,
+          address: businessDetails.address,
+          location: businessDetails.location || { coordinates: [36.8219, -1.2921] },
+          services: businessDetails.services || []
+        });
+      }
+
+      const token = generateToken(user._id);
+
+      return res.status(201).json({
+        success: true,
+        isNewUser: true,
+        token,
+        user: {
+          id: user._id,
+          phone: user.phone,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role
+        },
+        garage: garage ? {
+          id: garage._id,
+          businessName: garage.businessName,
+          isVerified: garage.isVerified,
+          isOnline: garage.isOnline
+        } : null
+      });
+    }
+
+    const token = generateToken(user._id);
+
+    let garage = null;
+    if (user.role === 'garage') {
+      garage = await Garage.findOne({ userId: user._id });
+    }
+
+    res.json({
+      success: true,
+      isNewUser: false,
+      token,
+      user: {
+        id: user._id,
+        phone: user.phone,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      },
+      garage: garage ? {
+        id: garage._id,
+        businessName: garage.businessName,
+        isVerified: garage.isVerified,
+        isOnline: garage.isOnline
+      } : null
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+});
+
 export default router;
