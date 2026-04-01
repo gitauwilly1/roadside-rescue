@@ -14,12 +14,27 @@ import Garage from './models/Garage.js';
 
 dotenv.config();
 
+console.log(' Starting server...');
+console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('PORT:', process.env.PORT || 5000);
+
+// Validate required environment variables
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
+  process.exit(1);
+}
+
+console.log(' Environment variables validated');
+
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || '*',
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true
   }
 });
@@ -29,7 +44,7 @@ const connectedGarages = new Map();
 
 // Helper function to get geohash (simplified - grid based)
 const getGeohash = (lat, lng, precision = 3) => {
-  const latStep = 0.1; // ~11km
+  const latStep = 0.1;
   const lngStep = 0.1;
   const latHash = Math.floor(lat / latStep);
   const lngHash = Math.floor(lng / lngStep);
@@ -67,7 +82,6 @@ const findNearbyGarages = async (clientLat, clientLng, radius = 15) => {
   return garages;
 };
 
-// Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
   
@@ -130,7 +144,6 @@ io.on('connection', (socket) => {
   socket.on('new_job', async (jobData) => {
     console.log('New job received:', jobData._id);
     
-    // Get the full job from database to ensure we have location
     const job = await Job.findById(jobData._id);
     if (!job) {
       console.log('Job not found in database');
@@ -140,14 +153,11 @@ io.on('connection', (socket) => {
     const clientLat = job.clientLocation.coordinates[1];
     const clientLng = job.clientLocation.coordinates[0];
     
-    // Find nearby garages using MongoDB geospatial query
     const nearbyGarages = await findNearbyGarages(clientLat, clientLng, 15);
     
     console.log(`Found ${nearbyGarages.length} nearby garages for job ${job._id}`);
     
-    // Emit to each nearby garage individually
     for (const garage of nearbyGarages) {
-      // Find socket for this garage
       let targetSocketId = null;
       for (const [socketId, data] of connectedGarages) {
         if (data.garageId === garage._id.toString()) {
@@ -171,7 +181,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Job accepted - notify all other garages to remove from list
+  // Job accepted - notify all other garages
   socket.on('job_accepted', ({ jobId, garageId, garageName }) => {
     console.log(`Job ${jobId} accepted by garage ${garageName}`);
     socket.broadcast.emit('job_taken', { jobId, garageId });
@@ -183,7 +193,7 @@ io.on('connection', (socket) => {
     io.emit('job_status_update', { _id: jobId, status });
   });
 
-  // Garage location sharing (for client tracking)
+  // Garage location sharing for client tracking
   socket.on('garage_location_share', ({ jobId, location }) => {
     io.to(`job:${jobId}`).emit('garage_location_update', { jobId, location });
   });
@@ -222,38 +232,83 @@ io.on('connection', (socket) => {
   });
 });
 
-connectDB();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.set('io', io);
 
-// Routes
+
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Roadside Rescue API',
+    version: '1.0.0',
+    status: 'operational',
+    endpoints: {
+      health: '/health',
+      auth: '/api/v1/auth',
+      client: '/api/v1/client',
+      garage: '/api/v1/garage',
+      admin: '/api/v1/admin'
+    }
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
+  });
+});
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/garage', garageRoutes);
 app.use('/api/v1/client', clientRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.originalUrl,
+    method: req.method
+  });
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error('Server error:', err.stack);
+  res.status(500).json({ 
+    error: 'Something went wrong!',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('Socket.io ready for real-time connections');
-});
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    console.log(' MongoDB connected successfully');
+    
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () => {
+      console.log(` Server running on port ${PORT}`);
+      console.log(` Socket.io ready for real-time connections`);
+      console.log(` Health check: http://localhost:${PORT}/health`);
+      console.log(` API base: http://localhost:${PORT}/api/v1`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, closing server...');
