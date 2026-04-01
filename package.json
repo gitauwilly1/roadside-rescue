@@ -1,8 +1,8 @@
 {
   "name": "roadside-rescue",
-  "public": true,
+  "private": true,
   "version": "0.0.0",
-  "description": "",
+  "description": "Roadside Rescue API",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
