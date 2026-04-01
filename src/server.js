@@ -232,7 +232,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ==================== CORS CONFIGURATION ====================
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'https://roadside-rescue-client-1.vercel.app',
