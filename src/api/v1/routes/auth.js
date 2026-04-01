@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import User from '../../../models/User.js';
 import Garage from '../../../models/Garage.js';
 import { authMiddleware } from '../../../middleware/auth.js';
+import { verifyFirebaseToken } from '../../../config/firebaseAdmin.js';
 
 const router = express.Router();
 
