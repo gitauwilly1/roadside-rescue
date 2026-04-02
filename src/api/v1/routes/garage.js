@@ -2,6 +2,7 @@ import express from 'express';
 import { authMiddleware, garageOnly } from '../../../middleware/auth.js';
 import Garage from '../../../models/Garage.js';
 import Job from '../../../models/Job.js';
+import Review from '../../../models/Review.js';
 
 const router = express.Router();
 
@@ -313,6 +314,53 @@ router.patch('/jobs/:jobId/status', async (req, res) => {
   }
 });
 
+// @route   GET /api/v1/garage/reviews
+// @desc    Get reviews for own garage
+// @access  Private (Garage only)
+router.get('/reviews', async (req, res) => {
+  try {
+    const { limit = 50, page = 1 } = req.query;
+    
+    const garage = await getCurrentGarage(req.user._id);
+    
+    if (!garage) {
+      return res.status(404).json({ error: 'Garage profile not found' });
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const reviews = await Review.find({ garageId: garage._id })
+      .populate('clientId', 'fullName phone email')
+      .populate('jobId', 'serviceType status createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Review.countDocuments({ garageId: garage._id });
+
+    // Calculate rating distribution
+    const ratingDistribution = await Review.aggregate([
+      { $match: { garageId: garage._id } },
+      { $group: { _id: '$rating', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      reviews,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      ratingDistribution
+    });
+  } catch (error) {
+    console.error('Get garage reviews error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // @route   PUT /api/v1/garage/services
 // @desc    Update all services for own garage
