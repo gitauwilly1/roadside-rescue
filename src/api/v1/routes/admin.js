@@ -462,6 +462,45 @@ router.delete('/jobs/:jobId', async (req, res) => {
   }
 });
 
+// @route   GET /api/v1/admin/reviews
+// @desc    Get all reviews with pagination and filters
+// @access  Private (Admin only)
+router.get('/reviews', async (req, res) => {
+  try {
+    const { rating, garageId, limit = 50, page = 1 } = req.query;
+    
+    const query = {};
+    if (rating) query.rating = parseInt(rating);
+    if (garageId) query.garageId = garageId;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const reviews = await Review.find(query)
+      .populate('clientId', 'fullName phone email')
+      .populate('garageId', 'businessName businessPhone address')
+      .populate('jobId', 'serviceType status createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Review.countDocuments(query);
+
+    res.json({
+      success: true,
+      reviews,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Get reviews error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // @route   DELETE /api/v1/admin/reviews/:reviewId
 // @desc    Delete a review (admin only)
 // @access  Private (Admin only)
